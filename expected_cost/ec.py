@@ -350,7 +350,7 @@ def get_posteriors_from_scores(scores, priors=None, score_type='log_posteriors')
     """ Convert scores into posteriors depending on their type. See method
     bayes_decisions for more details."""
 
-    if score_type == 'posteriors' or score_type == 'log_posteriors':
+    if score_type in ['posteriors', 'log_posteriors']:
         # In this case, priors are ignored
         posteriors = np.exp(scores) if score_type == "log_posteriors" else scores
 
@@ -358,18 +358,20 @@ def get_posteriors_from_scores(scores, priors=None, score_type='log_posteriors')
         # If the inputs are not posteriors, turn them into posteriors
         # using the provided priors.
         if priors is None:
-            raise ValueError("Prior needs to be provided when using score_type %s"%score_type)
+            raise ValueError(
+                f"Prior needs to be provided when using score_type {score_type}"
+            )
 
         priors = np.array(priors)/np.sum(priors)
 
         if score_type == "log_likelihoods":
             posteriors = np.exp(utils.llks_to_logpost(scores, priors))
-        
+
         elif score_type == "log_likelihood_ratios":
             posteriors = np.exp(utils.llrs_to_logpost(scores, priors))
-        
+
         else:
-            raise ValueError("Score type %s not implemented"%score_type)
+            raise ValueError(f"Score type {score_type} not implemented")
 
     # Make sure the posteriors sum to 1
     posteriors /= np.sum(posteriors, axis=1, keepdims=True)
@@ -407,7 +409,7 @@ class cost_matrix:
         return self.costs
 
     @staticmethod
-    def from_utilities(utilites):
+    def from_utilities(utilities):
         """ Obtain a cost matrix from a utility matrix where better
         decisions are given higher values. """
         return cost_matrix(-utilities).normalize()
