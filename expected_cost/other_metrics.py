@@ -80,6 +80,35 @@ def net_benefit_from_EC(targets, decisions, pt=None, priors=None, sample_weight=
     NEC = ec.average_cost(targets, decisions, costs, priors, adjusted=adjusted)
     return net_factor * NEC
 
+def one_minus_f_beta_from_EC(targets, scores, thr, priors=None, beta=None):
+    
+    # Number of samples from each class
+    N0 = sum(targets==0)
+    N1 = sum(targets==1)
+    K = N0 + N1
+    # Number of samples of class 0 with a score larger than the thr (ie, labelled as class 1)
+    K01 = np.sum(scores[targets==0]>thr)
+    # Number of samples of class 1 with a score smaller than the thr (ie, labelled as class 0)
+    K10 = np.sum(scores[targets==1]<thr)
+    P1 = priors[0]
+    P2 = priors[1]
+    
+    costs_beta = ec.cost_matrix([[0, np.sqrt(beta)],[1,0]])
+    R = utils.compute_R_matrix_from_counts_for_binary_classif(K01, K10, N0, N1)
+    R_ast_2 = R[0][1]+R[1][1]
+    
+    NEC_beta = ec.average_cost_from_confusion_matrix(R, priors, costs_beta, adjusted=True)
+    
+    return min(np.sqrt(beta)*P2, P1)*(NEC_beta/(np.sqrt(beta)*P2+R_ast_2))
+
+def mccoeff_from_EC():
+    pass
+
+def lrplus_from_EC():
+    pass
+
+
+
 
 
 #######################################################################
