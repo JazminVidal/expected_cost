@@ -80,20 +80,12 @@ def net_benefit_from_EC(targets, decisions, pt=None, priors=None, sample_weight=
     NEC = ec.average_cost(targets, decisions, costs, priors, adjusted=adjusted)
     return net_factor * NEC
 
-def one_minus_f_beta_from_EC(targets, scores, thr, priors=None, beta=None):
+def one_minus_FS_from_EC(targets, decisions, priors=None, beta=None):
     '''
     That is, 1 − Fβ is proportional to ECβ2 with a scaling factor given by the 
     inverse of β2P2 + R∗2.
     '''
-    
-    # Number of samples from each class
-    N1 = sum(targets==0)
-    N2 = sum(targets==1)
-    K = N1 + N2
-    # Number of samples of class 0 with a score larger than the thr (ie, labelled as class 1)
-    K12 = np.sum(scores[targets==0]>thr)
-    # Number of samples of class 1 with a score smaller than the thr (ie, labelled as class 0)
-    K21 = np.sum(scores[targets==1]<thr)
+    N1,N2,_,_,K12,K21 = utils.get_counts_from_binary_data(targets, decisions)
     P1 = priors[0]
     P2 = priors[1]
     
@@ -107,7 +99,7 @@ def one_minus_f_beta_from_EC(targets, scores, thr, priors=None, beta=None):
 
 
 def mccoeff_from_EC(targets, decisions, costs=None , priors=None):
-    _,_,K11,K22,K12,K21 = utils.compute_confusion_matrix(targets, decisions, priors)
+    _,_,K11,K22,K12,K21 = utils.get_counts_from_binary_data(targets, decisions)
     K1_ast = K11 + K12
     K2_ast = K21 + K22
     K_ast_1 = K11 + K21
@@ -116,9 +108,12 @@ def mccoeff_from_EC(targets, decisions, costs=None , priors=None):
     NEC_u = ec.average_cost(targets, decisions, costs=costs, priors=priors, adjusted=True)
     return np.sqrt((K1_ast*K2_ast)/(K_ast_1*K_ast_2)) * (1-NEC_u)
 
-def lrplus_from_EC():
+def lrplus_from_EC(targets, decisions, costs=None, priors=None):
+    _,_,K11,K22,K12,K21 = utils.get_counts_from_binary_data(targets, decisions)
+    R12 = utils.compute_R_matrix_from_counts_for_binary_classif(K12, K21, K11, K22)[0][1]
+    NEC_u = ec.average_cost(targets, decisions, costs=costs, priors=priors, adjusted=True)
     
-    pass
+    return ((1-NEC_u)/R12)+1
 
 
 #######################################################################
