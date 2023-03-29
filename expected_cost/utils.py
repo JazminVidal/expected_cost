@@ -179,3 +179,13 @@ def get_binary_data_priors(targets):
     P0 = N0/K
     P1 = N1/K
     return np.round(P0,2), np.round(P1,2)
+
+
+def get_counts_for_binary_classif(targets, decisions):
+    N0 = sum(targets==0)
+    N1 = sum(targets==1)
+    K00 = sum(np.logical_and(targets==0, decisions==0))
+    K01 = sum(np.logical_and(targets==0, decisions==1))
+    K11 = sum(np.logical_and(targets==1, decisions==1))
+    K10 = sum(np.logical_and(targets==1, decisions==0))
+    return N0, N1, K00, K11, K01, K10
