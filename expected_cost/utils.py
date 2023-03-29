@@ -79,14 +79,14 @@ def compute_R_matrix_from_counts_for_binary_classif(K01, K10, N0, N1):
     """
 
     cm = np.array([[N0-K01, K01],[K10, N1-K10]])
-    # returns R matrix 
-    return cm/cm.sum(axis=1, keepdims=True)
+    R = cm/cm.sum(axis=1, keepdims=True)
+    return R
     
 
 def bayes_thr_for_llrs(priors, costs):
     """ This method computes the bayes threshold on the LLRs when the cost matrix has 
     the following form:
-                        0  c01
+                         0  c01
                         c10  0
     """
 
@@ -158,39 +158,24 @@ def mkdir_p(dir):
     if not os.path.isdir(dir):
         os.makedirs(dir)
 
-
-#########################################################################################
-# Definition of a few standard metrics computed from the confusion matrix
-
-def Fscore(K10, K01, N0, N1):
-    K11 = N1-K10
-    Recall    = K11/N1
-    Precision = K11/(K11+K01) if K11+K01>0 else 0
-    # Returns Fscore
-    return 2 * Precision*Recall/(Recall+Precision) if K11>0 else 0
-    
-
-def MCCoeff(K10, K01, N0, N1):
-    K11 = N1-K10
-    K00 = N0-K01
-    num = K00 * K11 - K01 * K10
-    den = np.sqrt(N0 * N1 * (K01+K11) * (K10 + K00))
-    return num/den if den>0 else (np.inf if num>0 else -np.inf)
-
-
-def LRplus(K10, K01, N0, N1):
-    R10 = K10 / N1
-    R01 = K01 / N0
-    return (1-R10)/R01 if R01>0 else np.inf
-
+# define a function to convert softmax probabilities to logits
+def softmax_to_logits(x):
+    return np.log(x / (1 - x))
 
 def plot_vertical_line(x, ylim, style):
     plt.plot([x,x], ylim, style)
-    
 
+    
 def value_at_thr(values, thrs, sel_thr):
     # Encuentro el valor thrs que está más cerca de sel_thr
     # y luego busco en values el que corresponde
     i = np.argmin(np.abs(np.array(thrs)-sel_thr))
     return values[i]
 
+def get_binary_data_priors(targets):
+    N0 = sum(targets==0)
+    N1 = sum(targets==1)
+    K = N0 + N1
+    P0 = N0/K
+    P1 = N1/K
+    return np.round(P0,2), np.round(P1,2)
