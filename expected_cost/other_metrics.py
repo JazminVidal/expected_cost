@@ -84,11 +84,11 @@ def one_minus_FS_from_EC(targets, decisions, priors=None, beta=None):
     '''
     That is, 1 − Fβ is proportional to ECβ2 with a scaling factor given by the 
     inverse of β2P2 + R∗2.
+    # OJO que tarda 1m45.3s para umbrales (-7,7,0.1)
     '''
     N1,N2,_,_,K12,K21 = utils.get_counts_from_binary_data(targets, decisions)
     P1 = priors[0]
     P2 = priors[1]
-    
     costs_beta = ec.cost_matrix([[0, np.sqrt(beta)],[1,0]])
     R = utils.compute_R_matrix_from_counts_for_binary_classif(K12, K21, N1, N2)
     R_ast_2 = R[0][1]+R[1][1]
@@ -99,22 +99,35 @@ def one_minus_FS_from_EC(targets, decisions, priors=None, beta=None):
 
 
 def mccoeff_from_EC(targets, decisions, costs=None , priors=None):
+    '''
+    '''
     _,_,K11,K22,K12,K21 = utils.get_counts_from_binary_data(targets, decisions)
     K1_ast = K11 + K12
     K2_ast = K21 + K22
     K_ast_1 = K11 + K21
     K_ast_2 = K12 + K22
     
-    NEC_u = ec.average_cost(targets, decisions, costs=costs, priors=priors, adjusted=True)
-    return np.sqrt((K1_ast*K2_ast)/(K_ast_1*K_ast_2)) * (1-NEC_u)
+    NEC_u = ec.average_cost(targets, decisions, costs, priors, adjusted=True)
+    num = K1_ast*K2_ast
+    den = K_ast_1*K_ast_2
+    
+    
+        
+    return (np.sqrt(num/den)*(1-NEC_u)) if den>0 else (np.inf if num>0 else -np.inf)
+
 
 def lrplus_from_EC(targets, decisions, costs=None, priors=None):
+    '''
+    LR+ is the likelihood ratio for positive results. it is used for non-symmetric binary 
+    classification problems where one of the classes is the class of interest. It is given by: 
+    sensitivity / (1-specificity) if we assume class 2 is the class of interest, sensitivity = R22 
+    and specificity = R11. 
+    '''
     _,_,K11,K22,K12,K21 = utils.get_counts_from_binary_data(targets, decisions)
     R12 = utils.compute_R_matrix_from_counts_for_binary_classif(K12, K21, K11, K22)[0][1]
     NEC_u = ec.average_cost(targets, decisions, costs=costs, priors=priors, adjusted=True)
-    
-    return ((1-NEC_u)/R12)+1
 
+    return (((1-NEC_u)/R12)+1) if R12>0 else np.inf
 
 #######################################################################
 # Other ways of computing minDCF
