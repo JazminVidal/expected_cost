@@ -40,140 +40,93 @@ def net_benefit(K01, K11, K, pt=None):
 # Other metrics computed using EC so that is obvious that they are specific cases of EC. 
 
 def accuracy_from_EC(targets, decisions):
-    '''
-    Accuracy is 1-Error rate
-    Error rate is the EC when using:
-    - The priors in the evaluation data
-    - The 0-1 cost matrix 
-    '''
     # Number of classes 
     C = len(np.unique(targets))
     # Prior for class 0
     p0 = utils.get_binary_data_priors(targets)[0]
-    # Prior vector with given above and all other priors being equal to (1-p0)/(C-1)
+    # Prior vector 
     data_priors = np.array([p0] + [(1 - p0) / (C - 1)] * (C - 1))
     # Cost matrix
     costs_01 = ec.cost_matrix.zero_one_costs(C)
-    
     # Expected cost
     EC = ec.average_cost(targets, decisions, costs_01, data_priors, adjusted=False)
     return 1-EC
 
 def bal_accuracy_from_EC(targets, decisions):
-    '''
-    Balanced Accuracy is defined as the average of the recall values 
-    (the fraction of samples from a certain class that are labelled correctly) 
-    over all classes. It is defined as 1-BalErrorRate where BalErrorRate is the
-    Error rate. In terms of the EC the BalErrorRate is the EC when using: 
-    - cij = 1/(CP_i) in the cost matrix
-    '''
     # Number of classes 
     C = len(np.unique(targets))
     # Prior for class 0
     p0 = utils.get_binary_data_priors(targets)[0]
-    # Prior vector with given above and all other priors being equal to (1-p0)/(C-1)
+    # Prior vector 
     data_priors = np.array([p0] + [(1 - p0) / (C - 1)] * (C - 1))
     # A cost matrix for balance accuracy with c_ij = 1/(CP_i)
     bal_acc_cost = ec.cost_matrix([[0, 1/(C*data_priors[0])], [1/(C*data_priors[1]), 0]])
-    
     EC = ec.average_cost(targets, decisions, bal_acc_cost, data_priors, adjusted=False)
-    
     return 1-EC
 
 def net_benefit_from_EC(targets, decisions, pt=None):
-    '''
-    Net benefit can be defined as a function of EC
-    P_2 - min(P_2, (p_t/1-p_t) P_1) NEC
-    '''
     # Number of classes 
     C = len(np.unique(targets))
     # Prior for class 0
     p0 = utils.get_binary_data_priors(targets)[0]
-    # Prior vector with given above and all other priors being equal to (1-p0)/(C-1)
+    # Prior vector 
     data_priors = np.array([p0] + [(1 - p0) / (C - 1)] * (C - 1))
     c12 = pt/(1-pt)
+    # Cost matrix
     costs_nb = ec.cost_matrix([[0, c12],[1,0]])
     net_factor = data_priors[1] - min(data_priors[1], (pt/1-pt)*data_priors[0])
     NEC = ec.average_cost(targets, decisions, costs_nb, data_priors, adjusted=True)
     return net_factor * NEC
 
 def one_minus_fscore_from_EC(targets, decisions, beta=None):
-    '''
-    That is, 1-Fβ is proportional to EC_beta2 with a scaling factor given by the 
-    inverse of β2P2 + R2.
-    '''
     # Number of classes 
     C = len(np.unique(targets))
-    
     # Prior for class 0 where
-    # class 0 is the class with label 0
     P1 = utils.get_binary_data_priors(targets)[1]
-
     # All data priors 
     priors = np.array([P1] + [(1 - P1) / (C - 1)] * (C - 1))
-    
     P2 = priors[0]
-        
     # Counts and R matrix   
     N1,N2,_,_,K12,K21 = utils.get_counts_from_binary_data(targets, decisions)
-    
     R = utils.compute_R_matrix_from_counts_for_binary_classif(K12, K21, N1, N2)
     R_ast_2 = R[0][1]+R[1][1]
-    
+    # Cost matrix
     costs_beta = ec.cost_matrix([[0, beta**2],[1,0]])
-    
     EC_beta = ec.average_cost_from_confusion_matrix(R, priors, costs_beta, adjusted=False)
     #NEC_beta = ec.average_cost_from_confusion_matrix(R, priors, costs_beta, adjusted=True)
-    
     return EC_beta / ((beta**2*P2)+R_ast_2)
     #return min(beta**2*P2, P1)*(NEC_beta/((beta**2*P2)+R_ast_2))
 
 def mccoeff_from_EC(targets, decisions):
-    '''
-    '''
     # Number of classes 
     C = len(np.unique(targets))
-    
     # Uniform priors
     unif_priors = np.ones(C) / C
-    
     # Counts
     _,_,K11,K22,K12,K21 = utils.get_counts_from_binary_data(targets, decisions)
     K1_ast = K11 + K12
     K2_ast = K21 + K22
     K_ast_1 = K11 + K21
     K_ast_2 = K12 + K22
-    
     # We consider the usual 0-1 cost matrix
     costs_01 = ec.cost_matrix.zero_one_costs(C)
-    
     NEC_u = ec.average_cost(targets, decisions, costs_01, unif_priors, adjusted=True)
+    # Factor
     num = K1_ast*K2_ast
     den = K_ast_1*K_ast_2
-    
     return (np.sqrt(num/den)*(1-NEC_u)) if den>0 else (np.inf if num>0 else -np.inf)
 
 def lrplus_from_EC(targets, decisions):
-    '''
-    LR+ is the likelihood ratio for positive results. it is used for non-symmetric binary 
-    classification problems where one of the classes is the class of interest. It is given by: 
-    sensitivity / (1-specificity) if we assume class 2 is the class of interest, sensitivity = R22 
-    and specificity = R11. 
-    '''
     # Number of classes 
     C = len(np.unique(targets))
-    
     # Uniform priors
     unif_priors = np.ones(C) / C
-    
+    # Counts 
     N1,_,_,_,K12,_ = utils.get_counts_from_binary_data(targets, decisions)
     R12 = K12 / N1
-    
-    # We consider the usual 0-1 cost matrix
+    # Cost matrix 
     costs_01 = ec.cost_matrix.zero_one_costs(C)
-    
     NEC_u = ec.average_cost(targets, decisions, costs_01, unif_priors, adjusted=True)
-
     return (((1-NEC_u)/R12)+1) if R12>0 else np.inf
 
 
@@ -188,24 +141,20 @@ def compute_labels_predicted(scores, threshold=0):
 def cost_det(th, scores, labels, Ptar=0.5, cost_miss=1, cost_fa=1):
     
     labels_predicted = compute_labels_predicted(scores, threshold=th)
+    
     miss = [1 if i>j else 0 for i,j in zip(labels, labels_predicted)]
     Pmiss = sum(np.array(miss)==1)/len(miss)
-
     fa = [1 if i<j else 0 for i,j in zip(labels, labels_predicted)]
     Pfa = sum(np.array(fa)==1)/len(fa)
 
     cdet = cost_miss * Ptar * Pmiss + cost_fa * (1-Ptar) * Pfa
-
     cdef = np.min([cost_miss*Ptar, cost_fa*(1-Ptar)])
 
     return cdet/cdef, Pmiss, Pfa
 
 # Sklearn 
-def compute_det_curve1(labels, scores, figure=0, pathfigure='det.png'):    
-    # Use sklearn 
-
+def compute_det_curve(labels, scores, figure=0, pathfigure='det.png'):    
     fpr, fnr, thresholds = det_curve(np.array(labels,dtype=float), np.array(scores,dtype=float))
-
     return fpr, fnr, thresholds
 
 # NetBenefit by Dayana Ribas using sklearn 
