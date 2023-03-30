@@ -379,6 +379,7 @@ def get_posteriors_from_scores(scores, priors=None, score_type='log_posteriors')
     return posteriors
 
 
+
 class cost_matrix:
     """ 
     Utility class to define and work with cost matrices. The cost matrix has one

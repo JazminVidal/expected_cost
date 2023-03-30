@@ -5,6 +5,7 @@ from scipy.special import expit, logit, logsumexp
 import os
 
 
+# Plotting util functions
 def plot_hists(targets, scores, outfile):
 
     num_targets = scores.shape[1]
@@ -20,7 +21,6 @@ def plot_hists(targets, scores, outfile):
     plt.tight_layout()
     plt.savefig(outfile)
     plt.close()
-
 
 def make_hist(targets, scores, classi=0, nbins=100):
     """ Plot the histogram for the scores output by the system for
@@ -67,8 +67,24 @@ def make_hist(targets, scores, classi=0, nbins=100):
 
     return centers, hists
     
+def mkdir_p(dir):
+
+    if not os.path.isdir(dir):
+        os.makedirs(dir)
+    
+def plot_vertical_line(x, ylim, style):
+    plt.plot([x,x], ylim, style)
+
+def value_at_thr(values, thrs, sel_thr):
 
 
+# Scores transformation util functions    
+    # Encuentro el valor thrs que está más cerca de sel_thr
+    # y luego busco en values el que corresponde
+    i = np.argmin(np.abs(np.array(thrs)-sel_thr))
+    return values[i] 
+
+# Other util functions mostly for transforming scores and getting counts
 def compute_R_matrix_from_counts_for_binary_classif(K01, K10, N0, N1):
     """ Compute the error rates given the number of missclassifications, K01 and K10, 
     and the total number of samples for each class, N0, N1.
@@ -81,7 +97,6 @@ def compute_R_matrix_from_counts_for_binary_classif(K01, K10, N0, N1):
     cm = np.array([[N0-K01, K01],[K10, N1-K10]])
     R = cm/cm.sum(axis=1, keepdims=True)
     return R
-    
 
 def bayes_thr_for_llrs(priors, costs):
     """ This method computes the bayes threshold on the LLRs when the cost matrix has 
@@ -95,7 +110,6 @@ def bayes_thr_for_llrs(priors, costs):
         raise ValueError("This method is only valid for cost matrices of the form: [[0, c01], [c10, 0]]")
 
     return np.log(priors[0]/priors[1]*cmatrix[0,1]/cmatrix[1,0])
-
 
 def llrs_to_logpost(llrs, priors):
     """ Compute the log posterior from the log-likelihood-ratios (llrs):
@@ -116,7 +130,6 @@ def llrs_to_logpost(llrs, priors):
 
     return np.c_[logpost_class0, logpost_class1]
 
-
 def llks_to_logpost(llks, priors):
     """ Compute the log posterior from the log potentially-scaled likelihoods.
     The scale (a factor independent of the class, usually p(x)), does not matter 
@@ -125,7 +138,6 @@ def llks_to_logpost(llks, priors):
 
     log_posteriors_unnormed = llks + np.log(priors)
     return log_posteriors_unnormed - logsumexp(log_posteriors_unnormed, axis=1, keepdims=True)
-
 
 def logpost_to_log_scaled_lks(logpost, priors):
     """ Compute the log scaled likeliihoods from the log posteriors, 
@@ -139,7 +151,6 @@ def logpost_to_log_scaled_lks(logpost, priors):
 
     return logpost - np.log(priors)
 
-
 def logpost_to_llrs(logpost, priors):
     """ Compute the log-likeliihood ratio (for binary classification) from the 
     log posteriors, given the priors:
@@ -152,25 +163,8 @@ def logpost_to_llrs(logpost, priors):
 
     return logpost[:,1] - logpost[:,0] - np.log(priors[1]) + np.log(priors[0])
 
-
-def mkdir_p(dir):
-
-    if not os.path.isdir(dir):
-        os.makedirs(dir)
-
-# define a function to convert softmax probabilities to logits
 def softmax_to_logits(x):
     return np.log(x / (1 - x))
-
-def plot_vertical_line(x, ylim, style):
-    plt.plot([x,x], ylim, style)
-
-    
-def value_at_thr(values, thrs, sel_thr):
-    # Encuentro el valor thrs que está más cerca de sel_thr
-    # y luego busco en values el que corresponde
-    i = np.argmin(np.abs(np.array(thrs)-sel_thr))
-    return values[i]
 
 def get_binary_data_priors(targets):
     N0 = sum(targets==0)
@@ -178,10 +172,13 @@ def get_binary_data_priors(targets):
     K = N0 + N1
     P0 = N0/K
     P1 = N1/K
-    return np.round(P0,2), np.round(P1,2)
-
+    return P0, P1
 
 def get_counts_from_binary_data(targets, decisions):
+    '''
+    Requires already computed hard decisions from a threshold NOT raw scores
+
+    '''
     N0 = sum(targets==0)
     N1 = sum(targets==1)
     K00 = sum(np.logical_and(targets==0, decisions==0))
